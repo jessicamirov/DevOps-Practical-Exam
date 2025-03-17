@@ -1,0 +1,17 @@
+# Stage 1 ---- Build Stage
+FROM python:3.9-slim as builder
+WORKDIR /app
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage 2 ---- Final Stage
+FROM python:3.9-slim
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY . /app/
+# Set environment variables for AWS
+ENV AWS_ACCESS_KEY_ID=""
+ENV AWS_SECRET_ACCESS_KEY=""
+ENV AWS_DEFAULT_REGION=us-east-1
+EXPOSE 5001
+CMD ["python", "app.py"]
