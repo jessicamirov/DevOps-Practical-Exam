@@ -33,13 +33,29 @@ def home():
            })
   
    # Fetch VPCs
-   vpc_data = [{"VPC ID": vpc["VpcId"], "CIDR": vpc["CidrBlock"]} for vpc in vpcs["Vpcs"]]
+   vpc_data = []
+   lb_data = []
+   ami_data = []
+
+   try:
+       vpcs = ec2_client.describe_vpcs()
+       vpc_data = [{"VPC ID": vpc["VpcId"], "CIDR": vpc["CidrBlock"]} for vpc in vpcs.get("Vpcs", [])]
+   except Exception as e:
+       vpc_data = [{"VPC ID": "Error", "CIDR": str(e)}]
   
    # Fetch Load Balancers
-   lb_data = [{"LB Name": lb["LoadBalancerName"], "DNS Name": lb["DNSName"]} for lb in lbs["LoadBalancers"]]
+   try:
+        lbs = elb_client.describe_load_balancers()
+        lb_data = [{"LB Name": lb["LoadBalancerName"], "DNS Name": lb["DNSName"]} for lb in lbs.get("LoadBalancers", [])]
+   except Exception as e:
+        lb_data = [{"LB Name": "Error", "DNS Name": str(e)}]
   
    # Fetch AMIs (only owned by the account)
-   ami_data = [{"AMI ID": ami["ImageId"], "Name": ami.get("Name", "N/A")} for ami in amis["Images"]]
+   try:
+        amis = ec2_client.describe_images(Owners=["self"])
+        ami_data = [{"AMI ID": ami["ImageId"], "Name": ami.get("Name", "N/A")} for ami in amis.get("Images", [])]
+   except Exception as e:
+        ami_data = [{"AMI ID": "Error", "Name": str(e)}]
   
    # Render the result in a simple table
    html_template = """
