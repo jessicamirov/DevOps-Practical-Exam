@@ -1,0 +1,131 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
+  DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
+  IMAGE_NAME: 'jessicamirov/flask-aws-monitor'
+
+stages:
+- stage: CloneRepository
+  displayName: 'Clone Repository'
+  jobs:
+  - job: Clone
+    steps:
+    - checkout: self
+
+- stage: ParallelChecks
+  displayName: 'Parallel Linting & Security Checks'
+  dependsOn: CloneRepository
+  jobs:
+  - job: Linting
+    displayName: 'Linting'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.9'
+        addToPath: true
+    
+    - script: |
+        pip install flake8 pylint
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        pylint --disable=all --enable=unused-import,syntax-error,dangerous-default-value app/
+      displayName: 'Python Linting'
+    
+    - script: |
+        npm install -g dockerlint
+        dockerlint Dockerfile
+      displayName: 'Dockerfile Linting'
+    
+    - script: |
+        sudo apt-get install -y shellcheck
+        find . -type f -name "*.sh" -exec shellcheck {} \;
+      displayName: 'Shell Script Linting'
+  
+  - job: SecurityScan
+    displayName: 'Security Scanning'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.9'
+        addToPath: true
+    
+    - script: |
+        pip install safety
+        pip freeze > requirements.txt
+        safety check -r requirements.txt
+      displayName: 'Python Dependency Security Scan'
+    
+    - script: |
+        docker run --rm -v $(pwd):/app aquasec/trivy filesystem --severity HIGH,CRITICAL /app
+      displayName: 'Code Security Scan'
+    
+    - script: |
+        docker build -t temp-image-for-scan .
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image temp-image-for-scan
+      displayName: 'Container Security Scan'
+
+- stage: BuildDockerImage
+  displayName: 'Build Docker Image'
+  dependsOn: ParallelChecks
+  jobs:
+  - job: BuildImage
+    steps:
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        command: build
+        dockerfile: '$(System.DefaultWorkingDirectory)/Dockerfile'
+        repository: $(IMAGE_NAME)
+        tags: |
+          latest
+          $(Build.BuildId)
+
+- stage: PushToDockerHub
+  displayName: 'Push Docker Image to Docker Hub'
+  dependsOn: BuildDockerImage
+  jobs:
+  - job: PushImage
+    steps:
+    - task: Docker@2
+      displayName: 'Login to Docker Hub'
+      inputs:
+        command: login
+        containerRegistry: 'dockerhub-connection'
+        
+    - task: Docker@2
+      displayName: 'Push Docker Image to Docker Hub'
+      inputs:
+        command: push
+        repository: $(IMAGE_NAME)
+        tags: |
+          latest
+          $(Build.BuildId)
+
+- stage: SecureCredentials
+  displayName: 'Store and Use Secure Credentials'
+  dependsOn: []
+  jobs:
+  - job: StoreSecrets
+    displayName: 'Ensure Credentials are Secure'
+    steps:
+    - script: |
+        echo "This is an informational stage. Actual credentials are stored in Azure DevOps."
+        echo "For setting up credentials, create a Variable Group named 'dockerhub-credentials'"
+        echo "with DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD variables in Azure DevOps Library."
+      displayName: 'Secure Credential Storage'
+    
+    - task: AzureCLI@2
+      displayName: 'Validate Variable Group Existence'
+      inputs:
+        azureSubscription: 'your-azure-subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Variable Group Check: This would validate variable group exists"
+          echo "In a real setup, use Azure DevOps REST API to verify the variable group"

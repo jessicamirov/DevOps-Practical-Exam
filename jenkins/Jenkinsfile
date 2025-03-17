@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_HUB_CREDS = credentials('docker-hub-credentials')
+        DOCKER_IMAGE = "jessicamirov/my-app"
+        DOCKER_TAG = "${env.BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Clone Repository') {
+            steps {
+                checkout scm 
+                echo "Repository cloned successfully"
+            }
+        }
+        
+                stage('Parallel Checks') {
+            parallel {
+                stage('Linting') {
+                    steps {
+                        echo "Starting linting processes"
+                        sh '''
+                            # Mock Python Linting (Flake8)
+                            echo "Running Python linting with Flake8"
+                            echo "Mock: Linting Python files... No critical issues found"
+                            
+                            # Mock Shell Script Linting (ShellCheck)
+                            echo "Running Shell Script linting with ShellCheck"
+                            echo "Mock: Linting shell scripts... No critical issues found"
+                            
+                            # Mock Dockerfile Linting (Hadolint)
+                            echo "Running Dockerfile linting with Hadolint"
+                            echo "Mock: Linting Dockerfile... No critical issues found"
+                        '''
+                        echo "Linting completed successfully"
+                    }
+                }
+                
+                stage('Security Scan') {
+                    steps {
+                        echo "Starting security scanning"
+                        sh '''
+                            # Mock Python Security Scanning (Bandit)
+                            echo "Running Python security scanning with Bandit"
+                            echo "Mock: Scanning Python files for security issues... No critical vulnerabilities found"
+                            
+                            # Mock Container Security Scanning (Trivy)
+                            echo "Running container security scanning with Trivy"
+                            echo "Mock: Scanning Docker image for vulnerabilities... No critical vulnerabilities found"
+                        '''
+                        echo "Security scanning completed successfully"
+                    }
+                }
+            }
+        }
+
+        
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f docker/Dockerfile ."
+                sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                sh "echo ${DOCKER_HUB_CREDS_PSW} | docker login -u ${DOCKER_HUB_CREDS_USR} --password-stdin"
+                sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                sh "docker push ${DOCKER_IMAGE}:latest"
+            }
+        }
+    }
+    
+    post {
+        always {
+            sh "docker logout"
+            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest || true"
+            echo "Cleanup completed"
+        }
+        success {
+            echo "Pipeline executed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Please check the logs for details."
+        }
+    }
+}

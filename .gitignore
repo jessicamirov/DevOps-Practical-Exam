@@ -1,0 +1,15 @@
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/crash.log
+terraform/.terraform.lock.hcl
+terraform/.terraform.tfstate.lock.info
+terraform/.terraform/
+terraform/*.auto.tfvars
+terraform/*.tfvars
+.env
+
+jessica-builder-key.pem
+jessica-builder-key.pub
+terraform_outputs.json
+
+LICENSE.txt
