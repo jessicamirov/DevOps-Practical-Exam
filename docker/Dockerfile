@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM python:3.9-slim
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
-COPY app/ .
+COPY ../app/ .
 ENV PYTHONUNBUFFERED=1
 ENV AWS_ACCESS_KEY_ID=""
 ENV AWS_SECRET_ACCESS_KEY=""
