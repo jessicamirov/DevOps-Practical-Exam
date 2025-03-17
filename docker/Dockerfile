@@ -1,7 +1,7 @@
 # Stage 1 ---- Build Stage
 FROM python:3.9-slim AS builder
 WORKDIR /app
-COPY app/requirements.txt .
+COPY ../app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2 ---- Final Stage
