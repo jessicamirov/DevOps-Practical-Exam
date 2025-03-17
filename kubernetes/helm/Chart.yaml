@@ -1,0 +1,17 @@
+apiVersion: v2
+name: flask-aws-monitor
+description: A Helm chart for Flask AWS Monitoring Application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: DevOps Engineer
+    email: devops@example.com
+keywords:
+  - flask
+  - python
+  - aws
+  - monitoring
+home: https://github.com/yourusername/flask-aws-monitor
+sources:
+  - https://github.com/yourusername/flask-aws-monitor
