@@ -1,14 +1,14 @@
 # Stage 1 ---- Build Stage
 FROM python:3.9-slim AS builder
 WORKDIR /app
-COPY ../app/requirements.txt .
+COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2 ---- Final Stage
 FROM python:3.9-slim
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
-COPY ../app/ .
+COPY app/ .
 ENV PYTHONUNBUFFERED=1
 ENV AWS_ACCESS_KEY_ID=""
 ENV AWS_SECRET_ACCESS_KEY=""
