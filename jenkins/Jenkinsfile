@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_HUB_CREDS = credentials('docker-hub-credentials')
+        DOCKER_IMAGE = "jessicamirov/my-app"
+        DOCKER_TAG = "${env.BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Clone Repository') {
+            steps {
+                checkout scm 
+                echo "Repository cloned successfully"
+            }
+        }
+        
+        stage('Parallel Tests') {
+            parallel {
+                stage('Linting') {
+                    steps {
+                        echo "Starting linting processes"
+                        sh '''
+                            pip install flake8
+                            flake8 app/*.py --count --select=E9,F63,F7,F82 --show-source --statistics || true
+                            pip install shellcheck-py
+                            shellcheck-py docker/*.sh || true
+                            pip install hadolint-python
+                            hadolint docker/Dockerfile || true
+                        '''
+                    }
+                }
+                
+                stage('Security Scanning') {
+                    steps {
+                        echo "Starting security scanning"
+                        sh '''
+                            pip install bandit
+                            bandit -r app/ -f json -o bandit-results.json || true
+                            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+                            trivy fs --security-checks vuln,config --severity HIGH,CRITICAL . || true
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f docker/Dockerfile ."
+                sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                sh "echo ${DOCKER_HUB_CREDS_PSW} | docker login -u ${DOCKER_HUB_CREDS_USR} --password-stdin"
+                sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                sh "docker push ${DOCKER_IMAGE}:latest"
+            }
+        }
+    }
+    
+    post {
+        always {
+            sh "docker logout"
+            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest || true"
+            echo "Cleanup completed"
+        }
+        success {
+            echo "Pipeline executed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Please check the logs for details."
+        }
+    }
+}
