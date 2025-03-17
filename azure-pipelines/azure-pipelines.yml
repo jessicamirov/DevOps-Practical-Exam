@@ -7,9 +7,9 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: dockerhub-credentials 
-  - name: IMAGE_NAME
-    value: '$(DOCKERHUB_USERNAME)/flask-aws-monitor'
+  DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
+  DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
+  IMAGE_NAME: 'jessicamirov/flask-aws-monitor'
 
 stages:
 - stage: CloneRepository
